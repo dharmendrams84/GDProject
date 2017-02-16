@@ -36,7 +36,7 @@ public class GetReportDetailsFromCO {
 	static String emplName = "";
 
 	static int emplNumber = 0;
-
+	static String  emplNumberOrg = "";
 	static String discountGroupCode = "";
 
 	static String periodName = "";
@@ -65,9 +65,9 @@ public class GetReportDetailsFromCO {
 	static String getEepEmailDtls = "select * from ct_eep_emp_eml where  MSGTO is not null";
 	static String deleteEepEmailDtls = "delete from ct_eep_emp_eml where EMPLNUMBER = ?";
 	//static String getEepItemDtls = "select * from ct_eep_item where empl_number = ? and rownum <2  order by ts_crt_rcrd desc;";
-	static String getEepItemDtls = "select * from CT_VW_EEP_ENT_SUM where empl_number = ?";
-	static String getDiscDivQuery ="select * from ct_eep_entitlement where  EMPL_GROUP_ID = ?";
-	static String getPeriodDtlsQuery = "SELECT * FROM ct_eep_period WHERE sysdate BETWEEN period_start_date AND period_end_date+1";
+	//static String getEepItemDtls = "select * from CT_VW_EEP_ENT_SUM where empl_number = ?";
+	static String getDiscDivQuery ="select DISCOUNT_DIVISION from ct_eep_entitlement where  EMPL_GROUP_ID = ?";
+	static String getPeriodDtlsQuery = "SELECT PERIOD_ID,PERIOD_NAME FROM ct_eep_period WHERE sysdate BETWEEN period_start_date AND period_end_date+1";
 
 	static String getPeriodIdQuery = "SELECT period_id FROM ct_eep_period WHERE TO_DATE(sysdate, ''DD-MON-YY'') >=  "
 			+ "to_date(period_start_date,''DD-MON-YY'') "
@@ -80,15 +80,15 @@ public class GetReportDetailsFromCO {
 	static String getDivisionQuery =
 	"select a.discount_division  from ct_eep_entitlement a , ct_eep_item b where a.EMPL_GROUP_ID= b.EMPL_GROUP_ID and a.ENTITLEMENT_ID= b.ENTITLEMENT_ID and b.empl_number = ? and b.period_id= ? and b.id_itm = ?";
 
-	static String getEmplMstrDtlsQuery = "select * from ct_eep_empl_master where empl_number = ?";
+	static String getEmplMstrDtlsQuery = "select FIRSTNAME,LASTNAME from ct_eep_empl_master where empl_number = ?";
 	static Connection connection = null;	
-	static String getEntlIdQuery = "select * from ct_vw_eep_summary where empl_number = ? and period_id= ?";
-	static String getEntlDtlsQuery = "select * from ct_vw_eep_summary where empl_number = ? and period_id= ?";
+	//static String getEntlIdQuery = "select * from ct_vw_eep_summary where empl_number = ? and period_id= ?";
+	static String getEntlDtlsQuery = "select EMPL_GROUP_ID, DISCOUNT_PERCENT from ct_vw_eep_summary where empl_number = ? and period_id= ?";
 	
-	static String getRemainingSpendQuery = "select * from CT_VW_EEP_ENT_SUM where empl_number = ?";
+	static String getRemainingSpendQuery = "select MAX_SPEND_ENTITLED,ENTITLEMENT_DESCR,REMAINING_SPEND,TOTAL_SPEND from CT_VW_EEP_ENT_SUM where empl_number = ?";
 	static String getEmplGrpDescQuery = "select EMPL_GROUP_DESCR from ct_eep_group where EMPL_GROUP_ID = ?";
 
-	static String getTransactionDtls = "select * from ct_eep_item where empl_number = ? and period_id = ?";
+	//static String getTransactionDtls = "select * from ct_eep_item where empl_number = ? and period_id = ?";
 
 	static String getItemSizeQuery = "select ed_sz from as_itm_stk where id_itm = ?";
 
@@ -239,6 +239,7 @@ public class GetReportDetailsFromCO {
 		return divisionName;
 	}
 
+	@SuppressWarnings("unused")
 	static String getTransaDetails(int emplId, Integer periodId) throws SQLException 
 	{
 		String transactionDetails = "Store Id\t WorkStattion Id\tBusiness Date\ttrans Id\tLN_ITM\tEMPL Id\tPeriod\tItem Id<br><br>";
@@ -246,10 +247,11 @@ public class GetReportDetailsFromCO {
 		ResultSet resultSet=null;
 		try {
 
-			String queryString = "select * from ct_eep_item where empl_number  = ? and  period_id = ?";
-
+			//String queryString = "select * from ct_eep_item where empl_number  = ? and  period_id = ?";
+			String queryString = "select DC_DY_BSN,ID_ITM,MO_EXTN_LN_ITM_RTN,MO_EXTN_DSC_LN_ITM from ct_eep_item where empl_number  = ? and  period_id = ?";
 		    preparedStatement = connection.prepareStatement(queryString);
-			preparedStatement.setString(1, "" + emplId + "");
+			//preparedStatement.setString(1, "" + emplId + "");
+			preparedStatement.setInt(1,  emplId );
 			preparedStatement.setInt(2, periodId);
 
 			resultSet = preparedStatement.executeQuery();
@@ -499,7 +501,7 @@ public class GetReportDetailsFromCO {
 						.setScale(2, RoundingMode.HALF_UP);
 				
 				entlDescList.add(resultSet.getString("ENTITLEMENT_DESCR"));
-				remainingSpendAmt = resultSet.getString("remaining_spend");
+				remainingSpendAmt = resultSet.getString("REMAINING_SPEND");
 				String currentPurchaseStr = resultSet.getString("TOTAL_SPEND");
 					
 				
@@ -686,7 +688,7 @@ public class GetReportDetailsFromCO {
 				.append("<tr border='1' ><th>Nom de l’employé <br/>Employee Name</th><th>Numéro de l’employé<br/>Employee Number</th><th>Groupe de rabais<br/>Discount Group</th><th>Période de rapport<br/>Reporting Period</th></tr>");
 
 		htmlMailContent.append("<tr border='1' ><td>" + emplName + "</td><td>"
-				+ emplNumber + "</td>" + "<td>"+discGroupCode+"</td> " + "<td>" + periodName
+				+ emplNumberOrg + "</td>" + "<td>"+discGroupCode+"</td> " + "<td>" + periodName
 				+ "</td></tr></table><br/><br/><br/><br/><br/><br/>");
 		
 		
@@ -1051,6 +1053,7 @@ public class GetReportDetailsFromCO {
 				{
 				
 				emplNumber = me.getKey();
+				emplNumberOrg = me.getKey().toString();
 				//emplNumber = 34002;
 				
 				getEmplPeriodDtls();
